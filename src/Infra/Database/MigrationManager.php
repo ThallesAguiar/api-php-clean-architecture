@@ -166,13 +166,42 @@ class MigrationManager
 
         require_once $filePath;
         
-        $className = $this->getClassNameFromFileName($migrationName);
+        // Tenta extrair o nome da classe do arquivo
+        $className = $this->extractClassNameFromFile($filePath);
         
-        if (!class_exists($className)) {
-            throw new \Exception("Classe de migration não encontrada: {$className}");
+        if (!$className || !class_exists($className)) {
+            // Fallback para o método antigo
+            $className = $this->getClassNameFromFileName($migrationName);
+            
+            if (!class_exists($className)) {
+                throw new \Exception("Classe de migration não encontrada no arquivo: {$filePath}");
+            }
         }
 
         return $className;
+    }
+
+    /**
+     * Extrai o nome da classe diretamente do arquivo PHP
+     */
+    private function extractClassNameFromFile(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+        
+        // Procura por "class NomeDaClasse" com diferentes padrões
+        $patterns = [
+            '/class\s+(\w+)\s+extends\s+Migration/',
+            '/class\s+(\w+)\s+extends\s+\\\?App\\\Infra\\\Database\\\Migration/',
+            '/class\s+(\w+)/'
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        return null;
     }
 
     /**
@@ -180,8 +209,16 @@ class MigrationManager
      */
     private function getClassNameFromFileName(string $fileName): string
     {
+        // Remove a extensão .php
+        $fileName = str_replace('.php', '', $fileName);
+        
+        // Remove o timestamp (primeira parte antes do underscore)
         $parts = explode('_', $fileName);
-        array_shift($parts); // Remove timestamp
+        
+        // Remove o timestamp (primeiros 4 números)
+        if (count($parts) > 1 && is_numeric($parts[0])) {
+            array_shift($parts);
+        }
         
         $className = '';
         foreach ($parts as $part) {

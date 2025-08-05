@@ -79,13 +79,42 @@ class SeederManager
 
         require_once $filePath;
         
-        $className = $this->getClassNameFromFileName($seederName);
+        // Tenta extrair o nome da classe do arquivo
+        $className = $this->extractClassNameFromFile($filePath);
         
-        if (!class_exists($className)) {
-            throw new \Exception("Classe de seeder não encontrada: {$className}");
+        if (!$className || !class_exists($className)) {
+            // Fallback para o método antigo
+            $className = $this->getClassNameFromFileName($seederName);
+            
+            if (!class_exists($className)) {
+                throw new \Exception("Classe de seeder não encontrada no arquivo: {$filePath}");
+            }
         }
 
         return $className;
+    }
+
+    /**
+     * Extrai o nome da classe diretamente do arquivo PHP
+     */
+    private function extractClassNameFromFile(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+        
+        // Procura por "class NomeDaClasse" com diferentes padrões
+        $patterns = [
+            '/class\s+(\w+)\s+extends\s+Seeder/',
+            '/class\s+(\w+)\s+extends\s+\\\?App\\\Infra\\\Database\\\Seeder/',
+            '/class\s+(\w+)/'
+        ];
+        
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                return $matches[1];
+            }
+        }
+        
+        return null;
     }
 
     /**

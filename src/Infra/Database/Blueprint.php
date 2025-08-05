@@ -91,8 +91,9 @@ class Blueprint
      */
     public function timestamps(): self
     {
+        // Usa sintaxe compatível com todas as versões do MySQL/MariaDB
         $this->columns[] = "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP";
-        $this->columns[] = "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+        $this->columns[] = "`updated_at` TIMESTAMP DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP";
         return $this;
     }
 

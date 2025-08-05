@@ -247,15 +247,36 @@ php artisan make:seeder NomeSeeder    # Cria novo seeder
 
 ### Configuração do Banco
 
-Crie um arquivo `.env` na raiz do projeto:
+#### 1. Criar arquivo `.env`:
+```bash
+php setup_env.php
+```
+
+Ou crie manualmente o arquivo `.env` na raiz do projeto:
 
 ```env
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_USERNAME=root
 DB_PASSWORD=
 DB_DATABASE=spinwin
 DB_PORT=3306
 ```
+
+#### 2. Verificar conexão:
+```bash
+php check_connection.php
+```
+
+#### 3. Solução de problemas:
+
+**Erro de conexão com MariaDB:**
+- Use `127.0.0.1` em vez de `localhost`
+- Verifique se o MySQL/MariaDB está rodando
+- Verifique as credenciais do usuário root
+
+**Erro de sintaxe no .env:**
+- Certifique-se de que não há caracteres especiais
+- Use o script `setup_env.php` para criar o arquivo
 
 ### Documentação Completa
 

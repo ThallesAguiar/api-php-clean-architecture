@@ -9,9 +9,11 @@ use App\Infra\Database\SeederManager;
 
 // Carrega variáveis de ambiente
 if (file_exists(__DIR__ . '/.env')) {
-    $env = parse_ini_file(__DIR__ . '/.env');
-    foreach ($env as $key => $value) {
-        $_ENV[$key] = $value;
+    $env = parse_ini_file(__DIR__ . '/.env', false, INI_SCANNER_RAW);
+    if ($env !== false) {
+        foreach ($env as $key => $value) {
+            $_ENV[$key] = $value;
+        }
     }
 }
 
