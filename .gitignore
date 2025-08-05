@@ -1,0 +1,30 @@
+# Arquivos de configuração sensíveis
+.env
+
+# Dependências
+/vendor/
+
+# Arquivos de log
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de backup
+*.bak
+*.backup
+
+# Arquivos de cache
+cache/
+*.cache 
