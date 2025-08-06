@@ -24,7 +24,50 @@ O sistema de migrations permite:
 
 ## ⚙️ Instalação e Configuração
 
-### 1. Configuração do Banco de Dados
+### 1. Configuração com Docker
+
+O projeto usa Docker para desenvolvimento. Para configurar:
+
+#### 1.1. Arquivo `.env`
+Crie um arquivo `.env` na raiz do projeto com as configurações para Docker:
+
+```env
+# Configurações do MySQL (para o container MySQL)
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=spinwin
+MYSQL_USER=spinwin
+MYSQL_PASSWORD=spinwin
+DB_PORT=3306
+
+# Configurações para o PHP (dentro do container)
+DB_HOST=mysql
+DB_USERNAME=root
+DB_PASSWORD=root
+DB_DATABASE=spinwin
+```
+
+#### 1.2. Executar Containers
+```bash
+# Iniciar os containers
+docker-compose up -d
+
+# Verificar status
+docker-compose ps
+
+# Entrar no container PHP
+docker-compose exec php bash
+```
+
+#### 1.3. Executar Migrations no Docker
+```bash
+# Executar migrations
+docker-compose exec php bash -c "php artisan migrate"
+
+# Verificar status
+docker-compose exec php bash -c "php artisan migrate:status"
+```
+
+### 2. Configuração Local (sem Docker)
 
 Crie um arquivo `.env` na raiz do projeto:
 
@@ -334,7 +377,49 @@ class CreateOrdersTable extends Migration
 
 ### Problemas Comuns
 
-#### 1. Erro de Conexão
+#### 1. Erro de Conexão com Docker
+```
+Fatal error: Uncaught mysqli_sql_exception: Connection refused
+```
+
+**Causa:** Configuração incorreta das variáveis de ambiente para Docker.
+
+**Solução:** 
+1. Verifique se o arquivo `.env` contém as configurações corretas para Docker:
+
+```env
+# Configurações do MySQL (para o container MySQL)
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=spinwin
+MYSQL_USER=spinwin
+MYSQL_PASSWORD=spinwin
+DB_PORT=3306
+
+# Configurações para o PHP (dentro do container)
+DB_HOST=mysql
+DB_USERNAME=root
+DB_PASSWORD=root
+DB_DATABASE=spinwin
+```
+
+**Importante:** 
+- `DB_HOST=mysql` (nome do serviço no docker-compose)
+- `DB_USERNAME=root` (usuário root do MySQL)
+- `DB_PASSWORD=root` (senha definida em MYSQL_ROOT_PASSWORD)
+
+#### 2. Erro de Timestamp no MySQL 8.0
+```
+Invalid default value for 'updated_at'
+```
+
+**Causa:** MySQL 8.0 não aceita mais o valor `'0000-00-00 00:00:00'` como padrão para TIMESTAMP.
+
+**Solução:** O método `timestamps()` foi corrigido para usar:
+```php
+`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+```
+
+#### 3. Erro de Conexão Geral
 ```
 Erro: Erro ao conectar com o banco de dados
 ```

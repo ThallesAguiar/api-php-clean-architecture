@@ -7,9 +7,9 @@ use App\Shared\Response\SituacaoEnum;
 class Response
 {
     public static function json(
-        ?array $data = null,
-        string $message = '',
         string $status,
+        string $message = '',
+        ?array $data = null,
         int $code = 200,
         array $error = []
     ): void {

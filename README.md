@@ -13,12 +13,96 @@ Este projeto está organizado seguindo os princípios da **Clean Architecture** 
 
 ## 🚀 Como Executar
 
+> **💡 Dica:** Para um guia mais rápido, consulte [doc/quick-start.md](doc/quick-start.md)
+
+### Opção 1: Com Docker (Recomendado)
+
+1. **Configurar arquivo `.env`:**
+   ```bash
+   # Copie o arquivo de exemplo
+   cp env.example .env
+   ```
+
+2. **Adicionar configurações do Docker ao `.env`:**
+   ```env
+   # Configurações do MySQL (para o container MySQL)
+   MYSQL_ROOT_PASSWORD=root
+   MYSQL_DATABASE=spinwin
+   MYSQL_USER=spinwin
+   MYSQL_PASSWORD=spinwin
+   DB_PORT=3306
+
+   # Configurações para o PHP (dentro do container)
+   DB_HOST=mysql
+   DB_USERNAME=root
+   DB_PASSWORD=root
+   DB_DATABASE=spinwin
+   ```
+
+3. **Iniciar containers:**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Verificar se os containers estão rodando:**
+   ```bash
+   docker-compose ps
+   ```
+
+5. **Executar migrations:**
+   ```bash
+   docker-compose exec php bash -c "php artisan migrate"
+   ```
+
+6. **Testar a API:**
+   ```bash
+   # Testar se a API está funcionando
+   curl http://localhost:8080/api/users
+   ```
+
+7. **Acessar a API:**
+   - Base URL: `http://localhost:8080`
+   - API Endpoint: `http://localhost:8080/api`
+   - Swagger/OpenAPI: `http://localhost:8080/api/docs` (se disponível)
+
+### Conectar no HeidiSQL
+
+Para acessar o banco de dados via HeidiSQL:
+
+1. **Abra o HeidiSQL**
+2. **Clique em "New" (nova sessão)**
+3. **Configure a conexão:**
+   ```
+   Network type: MySQL (TCP/IP)
+   Hostname: localhost
+   User: root
+   Password: root
+   Port: 3306
+   ```
+4. **Clique em "Open"**
+
+**Dados de Conexão:**
+- Host: `localhost`
+- Port: `3306`
+- User: `root`
+- Password: `root`
+- Database: `spinwin` (será criada automaticamente)
+
+### Opção 2: Local (sem Docker)
+
 1. **Instalar dependências:**
    ```bash
    composer install
    ```
 
-2. **Iniciar o servidor:**
+2. **Configurar banco de dados local no `.env`**
+
+3. **Executar migrations:**
+   ```bash
+   php artisan migrate
+   ```
+
+4. **Iniciar o servidor:**
    ```bash
    composer start
    ```
@@ -27,9 +111,45 @@ Este projeto está organizado seguindo os princípios da **Clean Architecture** 
    php -S localhost:8000 -t public
    ```
 
-3. **Acessar a API:**
+5. **Acessar a API:**
    - Base URL: `http://localhost:8000`
    - API Endpoint: `http://localhost:8000/api`
+
+## 🔧 Troubleshooting
+
+### Problemas Comuns
+
+#### 1. Erro de Conexão com MySQL
+```
+Fatal error: Uncaught mysqli_sql_exception: Connection refused
+```
+
+**Solução:** Verifique se as configurações no `.env` estão corretas para Docker:
+- `DB_HOST=mysql` (nome do serviço no docker-compose)
+- `DB_USERNAME=root`
+- `DB_PASSWORD=root`
+
+#### 2. Erro de Timestamp no MySQL 8.0
+```
+Invalid default value for 'updated_at'
+```
+
+**Solução:** Este problema foi corrigido na versão atual. Se persistir, verifique se está usando a versão mais recente do código.
+
+#### 3. Container não inicia
+```bash
+# Verificar status dos containers
+docker-compose ps
+
+# Verificar logs
+docker-compose logs
+
+# Reiniciar containers
+docker-compose down
+docker-compose up -d
+```
+
+Para mais detalhes sobre troubleshooting, consulte: [doc/troubleshooting.md](doc/troubleshooting.md)
 
 ## 📚 Endpoints da API
 

@@ -1,5 +1,10 @@
 # Arquivos de configuração sensíveis
 .env
+.env.local
+.env.development
+.env.test
+.env.production
+/.docker/mysql.env
 
 # Dependências
 /vendor/
