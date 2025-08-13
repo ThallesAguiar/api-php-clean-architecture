@@ -2,32 +2,40 @@
 
 namespace App\Infra\Http;
 
-use App\Core\UseCases\RegisterUserUseCase;
-use App\Core\UseCases\ListUsersUseCase;
 use App\Core\UseCases\FindUserByIdUseCase;
+use App\Core\UseCases\ListUsersUseCase;
+use App\Core\UseCases\RegisterUserUseCase;
+use App\Infra\Http\Request;
 use App\Infra\Http\Response;
+use Psr\Log\LoggerInterface;
 
 class UserController
 {
-    public function __construct(
-        private RegisterUserUseCase $registerUserUseCase,
-        private ListUsersUseCase $listUsersUseCase,
-        private FindUserByIdUseCase $findUserByIdUseCase
-    ) {}
+    private $registerUserUseCase;
+    private $listUsersUseCase;
+    private $findUserByIdUseCase;
+    private $logger;
 
-    public function register(array $data): void
+    public function __construct(
+        RegisterUserUseCase $registerUserUseCase,
+        ListUsersUseCase $listUsersUseCase,
+        FindUserByIdUseCase $findUserByIdUseCase,
+        LoggerInterface $logger
+    ) {
+        $this->registerUserUseCase = $registerUserUseCase;
+        $this->listUsersUseCase = $listUsersUseCase;
+        $this->findUserByIdUseCase = $findUserByIdUseCase;
+        $this->logger = $logger;
+    }
+
+    public function register(Request $request): void
     {
         try {
-            $user = $this->registerUserUseCase->execute(
-                $data['name'] ?? '',
-                $data['email'] ?? '',
-                $data['password'] ?? ''
-            );
-
-            Response::success('Usuário criado com sucesso!', $user->toArray(), 201);
-        } catch (\InvalidArgumentException $e) {
-            Response::error($e->getMessage(), 400);
+            $data = $request->getData();
+            $this->registerUserUseCase->execute($data['name'], $data['email'], $data['password']);
+            Response::success('Usuário cadastrado com sucesso!');
         } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
             Response::error('Erro interno do servidor', 500);
         }
     }
@@ -36,30 +44,22 @@ class UserController
     {
         try {
             $users = $this->listUsersUseCase->execute();
+            $this->logger->info('Usuários listados com sucesso!');
             Response::success('Usuários listados com sucesso!', $users);
         } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
             Response::error('Erro interno do servidor', 500);
         }
     }
 
-    public function findById(string $id): void
+    public function findById($id): void
     {
         try {
             $user = $this->findUserByIdUseCase->execute($id);
-            
-            if (!$user) {
-                Response::error('Usuário não encontrado', 404);
-                return;
-            }
-
-            Response::success('Usuário encontrado com sucesso!', $user->toArray());
+            Response::success('Usuário encontrado com sucesso!', $user);
         } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
             Response::error('Erro interno do servidor', 500);
         }
-    }
-
-    public function handle(array $data): void
-    {
-        $this->register($data);
     }
 }

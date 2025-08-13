@@ -2,87 +2,123 @@
 
 namespace App\Infra\Routes;
 
+use App\Infra\DI\Container;
 use App\Infra\Http\Request;
-use App\Infra\Http\UserController;
-use App\Infra\Persistence\InMemoryUserRepository;
-use App\Core\UseCases\RegisterUserUseCase;
-use App\Core\UseCases\ListUsersUseCase;
-use App\Core\UseCases\FindUserByIdUseCase;
 use App\Infra\Http\Response;
+use Closure;
 
 class Router
 {
-    private Request $request;
-    private UserController $userController;
+    protected static $routes = [];
+    protected $container;
+    protected $request;
 
-    public function __construct()
+    public function __construct(Container $container, Request $request)
     {
-        $this->request = new Request();
-        $this->initializeControllers();
+        $this->container = $container;
+        $this->request = $request;
+        $this->loadRoutes();
     }
 
-    private function initializeControllers(): void
+    private function loadRoutes()
     {
-        $userRepository = new InMemoryUserRepository();
-        $registerUserUseCase = new RegisterUserUseCase($userRepository);
-        $listUsersUseCase = new ListUsersUseCase($userRepository);
-        $findUserByIdUseCase = new FindUserByIdUseCase($userRepository);
-
-        $this->userController = new UserController(
-            $registerUserUseCase,
-            $listUsersUseCase,
-            $findUserByIdUseCase
-        );
+        require_once __DIR__ . "/../../../routes/api.php";
     }
 
-    public function dispatch(): void
+    public static function get($uri, $action)
+    {
+        self::addRoute('GET', $uri, $action);
+    }
+
+    public static function post($uri, $action)
+    {
+        self::addRoute('POST', $uri, $action);
+    }
+
+    public static function addRoute($method, $uri, $action)
+    {
+        self::$routes[] = [
+            'method' => $method,
+            'uri' => $uri,
+            'action' => $action
+        ];
+    }
+
+    public function dispatch()
     {
         $uri = $this->request->getUri();
         $method = $this->request->getMethod();
 
-        // Verificar se é uma rota da API
-        if (strpos($uri, '/api') !== 0) {
-            Response::error('Not Found', 404);
+        foreach (self::$routes as $route) {
+            if ($this->matchRoute($route, $uri, $method)) {
+                return $this->executeAction($route, $uri);
+            }
         }
 
-        $route = substr($uri, 4); // Remove '/api' do início
-
-        // Rota raiz
-        if ($route === '/' || $route === '') {
-            Response::success('Bem-vindo à API SpinWin');
-            return;
-        }
-
-        // Rotas de usuários
-        if (strpos($route, '/users') === 0) {
-            $this->handleUserRoutes($route, $method);
-            return;
-        }
-
-        Response::error('Rota não encontrada', 404);
+        Response::error('Route not found', 404);
     }
 
-    private function handleUserRoutes(string $route, string $method): void
+    private function matchRoute($route, $uri, $method)
     {
-        // POST /api/users - Criar usuário
-        if ($route === '/users' && $method === 'POST') {
-            $this->userController->register($this->request->getData());
-            return;
+        if ($route['method'] !== $method) {
+            return false;
         }
 
-        // GET /api/users - Listar usuários
-        if ($route === '/users' && $method === 'GET') {
-            $this->userController->list();
-            return;
+        $pattern = preg_replace('/\{[a-zA-Z]+\}/', '([a-zA-Z0-9_]+)', $route['uri']);
+        $pattern = "#^" . $pattern . "$#";
+
+        return preg_match($pattern, $uri);
+    }
+
+    private function executeAction($route, $uri)
+    {
+        $action = $route['action'];
+        $params = $this->extractParams($route, $uri);
+
+        if ($action instanceof Closure) {
+            return $action(...$params);
         }
 
-        // GET /api/users/{id} - Buscar usuário por ID
-        if (preg_match('/^\/users\/(.+)$/', $route, $matches) && $method === 'GET') {
-            $userId = $matches[1];
-            $this->userController->findById($userId);
-            return;
+        if (is_string($action)) {
+            [$controller, $method] = explode('@', $action);
+            $controllerClass = "App\\Infra\\Http\\".$controller;
+
+            if (class_exists($controllerClass)) {
+                $controllerInstance = $this->container->make($controllerClass);
+                if (method_exists($controllerInstance, $method)) {
+                    $reflectionMethod = new \ReflectionMethod($controllerInstance, $method);
+                    $methodParams = $reflectionMethod->getParameters();
+
+                    $args = [];
+                    foreach ($methodParams as $param) {
+                        if ($param->getType() && $param->getType()->getName() === Request::class) {
+                            $args[] = $this->request;
+                        } else {
+                            if (count($params) > 0) {
+                                $args[] = array_shift($params);
+                            }
+                        }
+                    }
+
+                    return $controllerInstance->$method(...$args);
+                }
+            }
         }
 
-        Response::error('Método não permitido', 405);
+        Response::error('Invalid action', 500);
+    }
+
+    private function extractParams($route, $uri)
+    {
+        $params = [];
+        $pattern = preg_replace('/\{[a-zA-Z]+\}/', '([a-zA-Z0-9_]+)', $route['uri']);
+        $pattern = "#^" . $pattern . "$#";
+
+        if (preg_match($pattern, $uri, $matches)) {
+            array_shift($matches);
+            $params = $matches;
+        }
+
+        return $params;
     }
 }

@@ -1,161 +1,60 @@
-# 🚀 Quick Start - SpinWin API
+# Guia de Início Rápido
 
-Guia rápido para fazer a API funcionar em 5 minutos.
+Este guia irá ajudá-lo a configurar e executar a aplicação em seu ambiente de desenvolvimento.
 
-## 📋 Pré-requisitos
+## Pré-requisitos
 
-- Docker Desktop instalado
-- Git instalado
-- HeidiSQL (opcional, para visualizar o banco)
+- PHP 8.1 ou superior
+- Composer
 
-## ⚡ Passos Rápidos
+## Instalação
 
-### 1. **Clonar e Configurar**
-```bash
-# Clone o projeto (se ainda não fez)
-git clone <url-do-repositorio>
-cd spinwin
-
-# Configure o arquivo .env
-cp env.example .env
-```
-
-### 2. **Configurar .env**
-Edite o arquivo `.env` e adicione:
-
-```env
-# Configurações do MySQL (para o container MySQL)
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=spinwin
-MYSQL_USER=spinwin
-MYSQL_PASSWORD=spinwin
-DB_PORT=3306
-
-# Configurações para o PHP (dentro do container)
-DB_HOST=mysql
-DB_USERNAME=root
-DB_PASSWORD=root
-DB_DATABASE=spinwin
-```
-
-### 3. **Iniciar Containers**
-```bash
-docker-compose up -d
-```
-
-### 4. **Verificar Status**
-```bash
-docker-compose ps
-```
-
-Você deve ver:
-- `spinwin-mysql` - Up
-- `spinwin-php` - Up  
-- `spinwin-nginx` - Up
-
-### 5. **Executar Migrations**
-```bash
-docker-compose exec php bash -c "php artisan migrate"
-```
-
-### 6. **Testar a API**
-```bash
-# Listar usuários
-curl http://localhost:8080/api/users
-
-# Criar usuário
-curl -X POST http://localhost:8080/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"name":"João Silva","email":"joao@teste.com","password":"123456"}'
-```
-
-## 🎯 URLs da API
-
-- **Base URL:** `http://localhost:8080`
-- **API Endpoint:** `http://localhost:8080/api`
-- **Listar Usuários:** `GET http://localhost:8080/api/users`
-- **Criar Usuário:** `POST http://localhost:8080/api/users`
-- **Buscar Usuário:** `GET http://localhost:8080/api/users/{id}`
-
-## 🗄️ Conectar no HeidiSQL
-
-1. **Abra o HeidiSQL**
-2. **Nova sessão:**
+1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/thallesaguiar/spinwin.git
+   cd spinwin
    ```
-   Network type: MySQL (TCP/IP)
-   Hostname: localhost
-   User: root
-   Password: root
-   Port: 3306
+
+2. **Instale as dependências:**
+   ```bash
+   composer install
    ```
-3. **Clique em "Open"**
 
-## 🔧 Comandos Úteis
+3. **Configure o ambiente:**
+   - Copie o arquivo `.env.example` para `.env`:
+     ```bash
+     copy env.example .env
+     ```
+   - O arquivo `.env` já vem com uma configuração padrão. Você pode alterar a porta da aplicação modificando a variável `PORT`.
+
+## Iniciando a Aplicação
+
+Para iniciar o servidor de desenvolvimento, execute o seguinte comando:
 
 ```bash
-# Ver logs
-docker-compose logs
-
-# Reiniciar containers
-docker-compose restart
-
-# Parar containers
-docker-compose down
-
-# Entrar no container PHP
-docker-compose exec php bash
-
-# Verificar status das migrations
-docker-compose exec php bash -c "php artisan migrate:status"
+composer start
 ```
 
-## 🚨 Problemas Comuns
+O servidor será iniciado e a aplicação estará acessível em `http://localhost:8210` (ou na porta que você configurou a variável `NGINX_HOST_PORT` no arquivo `.env`).
 
-### API não responde
+**A API estará acessível em `http://localhost:8000/api`**.
+
+## Usando os Comandos Artisan
+
+A aplicação possui um script `artisan` para executar comandos de linha de comando, similar ao Laravel.
+
+### Criando uma Migration
+
+Para criar uma nova migration, utilize o comando `make:migration`:
+
 ```bash
-# Verificar containers
-docker-compose ps
-
-# Ver logs
-docker-compose logs nginx
-docker-compose logs php
+php artisan make:migration <nome_da_migration>
 ```
 
-### Erro de conexão com banco
+**Exemplo:**
+
 ```bash
-# Testar conexão MySQL
-docker-compose exec mysql mysql -u root -proot -e "SHOW DATABASES;"
-
-# Verificar .env
-docker-compose exec php bash -c "env | grep DB_"
+php artisan make:migration create_products_table
 ```
 
-### Migration falha
-```bash
-# Verificar logs
-docker-compose logs php
-
-# Tentar novamente
-docker-compose exec php bash -c "php artisan migrate"
-```
-
-## ✅ Checklist de Verificação
-
-- [ ] Docker Desktop rodando
-- [ ] Containers iniciados (`docker-compose ps`)
-- [ ] Arquivo `.env` configurado
-- [ ] Migrations executadas
-- [ ] API respondendo (`curl http://localhost:8080/api/users`)
-- [ ] HeidiSQL conectado (opcional)
-
-## 📞 Suporte
-
-Se algo não funcionar:
-
-1. **Verifique os logs:** `docker-compose logs`
-2. **Consulte:** [doc/troubleshooting.md](doc/troubleshooting.md)
-3. **Reinicie tudo:** `docker-compose down && docker-compose up -d`
-
----
-
-**🎉 Pronto! Sua API está funcionando em `http://localhost:8080`** 
+Isso irá criar um novo arquivo de migration na pasta `database/migrations`.

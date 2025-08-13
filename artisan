@@ -1,309 +1,42 @@
-#!/usr/bin/env php
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
-use App\Infra\Database\DatabaseConnection;
-use App\Infra\Database\MigrationManager;
-use App\Infra\Database\SeederManager;
+use App\Infra\DI\Container;
+use App\Application\Providers\AppServiceProvider;
 
-// Carrega variáveis de ambiente
-if (file_exists(__DIR__ . '/.env')) {
-    $env = parse_ini_file(__DIR__ . '/.env', false, INI_SCANNER_RAW);
-    if ($env !== false) {
-        foreach ($env as $key => $value) {
-            $_ENV[$key] = $value;
-        }
-    }
+$container = Container::getInstance();
+
+$appServiceProvider = new AppServiceProvider($container);
+$appServiceProvider->register();
+
+if ($argc < 2) {
+    echo "Usage: php artisan <command> [options]\n";
+    exit(1);
 }
 
-class Artisan
-{
-    private $migrationManager;
-    private $seederManager;
+$command = $argv[1];
 
-    public function __construct()
-    {
-        $connection = DatabaseConnection::getInstance()->getConnection();
-        $this->migrationManager = new MigrationManager($connection);
-        $this->seederManager = new SeederManager($connection);
-    }
-
-    public function run(array $args): void
-    {
-        if (count($args) < 2) {
-            $this->showHelp();
-            return;
+switch ($command) {
+    case 'make:migration':
+        if (!isset($argv[2])) {
+            echo "Usage: php artisan make:migration <name>\n";
+            exit(1);
         }
+        $name = $argv[2];
+        $className = ucfirst($name);
+        $fileName = date('Y_m_d_His') . '_' . $name . '.php';
+        $path = __DIR__ . '/database/migrations/' . $fileName;
 
-        $command = $args[1];
-        $subCommand = $args[2] ?? null;
+        $stub = file_get_contents(__DIR__ . '/src/Infra/Database/stubs/migration.stub');
+        $stub = str_replace('{{className}}', $className, $stub);
 
-        switch ($command) {
-            case 'migrate':
-                $this->handleMigrate($subCommand);
-                break;
-            case 'make:migration':
-                $this->handleMakeMigration($subCommand);
-                break;
-            case 'seeder':
-                $this->handleSeeder($subCommand, $args[3] ?? null);
-                break;
-            case 'make:seeder':
-                $this->handleMakeSeeder($subCommand);
-                break;
-            default:
-                echo "Comando não reconhecido: {$command}\n";
-                $this->showHelp();
-        }
-    }
+        file_put_contents($path, $stub);
 
-    private function handleMigrate(?string $subCommand): void
-    {
-        switch ($subCommand) {
-            case 'status':
-                $this->showMigrationStatus();
-                break;
-            case 'rollback':
-                $this->rollbackMigrations();
-                break;
-            case 'reset':
-                $this->resetMigrations();
-                break;
-            default:
-                $this->runMigrations();
-        }
-    }
+        echo "Migration created successfully: {$fileName}\n";
+        break;
 
-    private function handleMakeMigration(?string $name): void
-    {
-        if (!$name) {
-            echo "Erro: Nome da migration é obrigatório.\n";
-            echo "Uso: php artisan make:migration nome_da_migration\n";
-            return;
-        }
-
-        $this->createMigration($name);
-    }
-
-    private function handleSeeder(?string $subCommand, ?string $seederName): void
-    {
-        switch ($subCommand) {
-            case 'run':
-                if ($seederName) {
-                    $this->runSpecificSeeder($seederName);
-                } else {
-                    $this->runAllSeeders();
-                }
-                break;
-            case 'list':
-                $this->listSeeders();
-                break;
-            default:
-                echo "Comando seeder não reconhecido.\n";
-                echo "Uso: php artisan seeder [run|list] [nome_do_seeder]\n";
-        }
-    }
-
-    private function handleMakeSeeder(?string $name): void
-    {
-        if (!$name) {
-            echo "Erro: Nome do seeder é obrigatório.\n";
-            echo "Uso: php artisan make:seeder nome_do_seeder\n";
-            return;
-        }
-
-        $this->createSeeder($name);
-    }
-
-    private function runMigrations(): void
-    {
-        echo "Executando migrations...\n";
-        $results = $this->migrationManager->migrate();
-        
-        foreach ($results as $result) {
-            echo $result . "\n";
-        }
-    }
-
-    private function rollbackMigrations(): void
-    {
-        echo "Revertendo última batch de migrations...\n";
-        $results = $this->migrationManager->rollback();
-        
-        foreach ($results as $result) {
-            echo $result . "\n";
-        }
-    }
-
-    private function resetMigrations(): void
-    {
-        echo "Revertendo todas as migrations...\n";
-        $results = $this->migrationManager->reset();
-        
-        foreach ($results as $result) {
-            echo $result . "\n";
-        }
-    }
-
-    private function showMigrationStatus(): void
-    {
-        echo "Status das migrations:\n";
-        $status = $this->migrationManager->status();
-        
-        foreach ($status as $migration) {
-            $batch = $migration['batch'] ? " (Batch: {$migration['batch']})" : '';
-            echo "  {$migration['migration']} - {$migration['status']}{$batch}\n";
-        }
-    }
-
-    private function createMigration(string $name): void
-    {
-        $timestamp = date('Y_m_d_His');
-        $fileName = "{$timestamp}_{$name}.php";
-        $className = $this->getClassNameFromFileName($name);
-        
-        $migrationsPath = 'database/migrations';
-        if (!is_dir($migrationsPath)) {
-            mkdir($migrationsPath, 0755, true);
-        }
-        
-        $filePath = $migrationsPath . '/' . $fileName;
-        
-        $content = "<?php
-
-use App\Infra\Database\Migration;
-
-class {$className} extends Migration
-{
-    public function up(): void
-    {
-        // Implemente a criação da tabela aqui
-        // Exemplo:
-        // \$this->createTable('users', function(\$table) {
-        //     \$table->id();
-        //     \$table->string('name');
-        //     \$table->string('email')->unique();
-        //     \$table->timestamps();
-        // });
-    }
-
-    public function down(): void
-    {
-        // Implemente a reversão aqui
-        // Exemplo:
-        // \$this->dropTable('users');
-    }
+    default:
+        echo "Unknown command: {$command}\n";
+        exit(1);
 }
-";
-        
-        file_put_contents($filePath, $content);
-        echo "Migration criada: {$filePath}\n";
-    }
-
-    private function runAllSeeders(): void
-    {
-        echo "Executando todos os seeders...\n";
-        $results = $this->seederManager->run();
-        
-        foreach ($results as $result) {
-            echo $result . "\n";
-        }
-    }
-
-    private function runSpecificSeeder(string $seederName): void
-    {
-        echo "Executando seeder: {$seederName}\n";
-        $results = $this->seederManager->runSeeder($seederName);
-        
-        foreach ($results as $result) {
-            echo $result . "\n";
-        }
-    }
-
-    private function listSeeders(): void
-    {
-        echo "Seeders disponíveis:\n";
-        $seeders = $this->seederManager->list();
-        
-        foreach ($seeders as $seeder) {
-            echo "  {$seeder}\n";
-        }
-    }
-
-    private function createSeeder(string $name): void
-    {
-        $fileName = "{$name}.php";
-        $className = $this->getClassNameFromFileName($name);
-        
-        $seedersPath = 'database/seeders';
-        if (!is_dir($seedersPath)) {
-            mkdir($seedersPath, 0755, true);
-        }
-        
-        $filePath = $seedersPath . '/' . $fileName;
-        
-        $content = "<?php
-
-use App\Infra\Database\Seeder;
-
-class {$className} extends Seeder
-{
-    public function run(): void
-    {
-        // Implemente a inserção de dados aqui
-        // Exemplo:
-        // \$this->insert('users', [
-        //     'name' => 'João Silva',
-        //     'email' => 'joao@example.com',
-        //     'password' => password_hash('123456', PASSWORD_DEFAULT)
-        // ]);
-    }
-}
-";
-        
-        file_put_contents($filePath, $content);
-        echo "Seeder criado: {$filePath}\n";
-    }
-
-    private function getClassNameFromFileName(string $fileName): string
-    {
-        $parts = explode('_', $fileName);
-        
-        $className = '';
-        foreach ($parts as $part) {
-            $className .= ucfirst($part);
-        }
-        
-        return $className;
-    }
-
-    private function showHelp(): void
-    {
-        echo "SpinWin - Sistema de Migrations\n\n";
-        echo "Comandos disponíveis:\n\n";
-        
-        echo "Migrations:\n";
-        echo "  php artisan migrate                    Executa migrations pendentes\n";
-        echo "  php artisan migrate:status            Mostra status das migrations\n";
-        echo "  php artisan migrate:rollback          Reverte última batch\n";
-        echo "  php artisan migrate:reset             Reverte todas as migrations\n";
-        echo "  php artisan make:migration nome       Cria nova migration\n\n";
-        
-        echo "Seeders:\n";
-        echo "  php artisan seeder:run                Executa todos os seeders\n";
-        echo "  php artisan seeder:run nome           Executa seeder específico\n";
-        echo "  php artisan seeder:list               Lista seeders disponíveis\n";
-        echo "  php artisan make:seeder nome          Cria novo seeder\n\n";
-        
-        echo "Exemplos:\n";
-        echo "  php artisan make:migration create_users_table\n";
-        echo "  php artisan migrate\n";
-        echo "  php artisan make:seeder UserSeeder\n";
-        echo "  php artisan seeder:run UserSeeder\n";
-    }
-}
-
-// Executa o comando
-$artisan = new Artisan();
-$artisan->run($argv); 
