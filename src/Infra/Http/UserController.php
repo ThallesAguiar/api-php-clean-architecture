@@ -44,7 +44,6 @@ class UserController
     {
         try {
             $users = $this->listUsersUseCase->execute();
-            $this->logger->info('Usuários listados com sucesso!');
             Response::success('Usuários listados com sucesso!', $users);
         } catch (\Exception $e) {
             $this->logger->error($e->getMessage());
